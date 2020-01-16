@@ -1,0 +1,35 @@
+global enter_cached_write_time
+global get_writeback_lock
+global enter_times
+
+probe module("escache").statement("cached_dev_write@request.c:880"){
+	        enter_cached_write_time = gettimeofday_ns()
+		enter_times[$s->orig_bio->bi_sector] = enter_cached_write_time
+	        printf("== enter_cached_write_time %d %s -> %d %d %d\n", enter_cached_write_time, ppfunc(), pid(), tid(), $s->orig_bio->bi_sector)
+}
+
+probe module("escache").statement("cached_dev_write@request.c:885"){
+	        get_writeback_lock = gettimeofday_ns()
+	        printf("== get_writeback_lock %d writeback_lock_latency: %d %s -> %d %d %d\n", get_writeback_lock, get_writeback_lock - enter_times[$s->orig_bio->bi_sector], ppfunc(), pid(), tid(), $s->orig_bio->bi_sector)
+}
+
+probe module("escache").statement("cached_dev_write@request.c:901"){
+	        after_check_overlapping = gettimeofday_ns()
+		printf("== after_check_overlapping %d check_overlapping_latency: %d %s -> %d %d %d\n", after_check_overlapping, after_check_overlapping - enter_times[$s->orig_bio->bi_sector], ppfunc(), pid(), tid(), $s->orig_bio->bi_sector)
+}
+
+probe module("escache").statement("cached_dev_write_complete@request.c:871"){
+	        complete_time = gettimeofday_ns()
+		printf("== complete %d op_time: %d %s -> %d %d %d\n", complete_time, complete_time - enter_times[$s->orig_bio->bi_sector], ppfunc(), pid(), tid(), $s->orig_bio->bi_sector)
+		delete enter_times[$s->orig_bio->bi_sector]
+}
+
+probe module("escache").function("*@request.c").call {
+	        call_time = gettimeofday_ns()
+		printf("call time %d %s -> %d %d \n", call_time, ppfunc(), pid(), tid())
+}
+
+probe module("escache").function("*@request.c").return {
+	        return_time = gettimeofday_ns()
+		printf("return time %d %s -> %d %d \n", return_time, ppfunc(), pid(), tid())
+}
