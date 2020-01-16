@@ -1,0 +1,148 @@
+#probe process("/usr/bin/ceph-osd").statement("log_op_stats@PrimaryLogPG.cc:3515") {
+#          printf("==process time: %dns %s -> %4d op: %s \n", $latency->tv->tv_nsec, ppfunc(), pid(), $op$$)
+#}
+
+#probe process("/usr/bin/ceph-osd").statement("log_state_latency@BlueStore.h:1541") {
+#          printf("== time: %s %s -> %4d name: %d\n", $now->tv$, ppfunc(), pid(), $state)
+#}
+
+#probe process("/usr/bin/ceph-osd").statement("issue_op@ReplicatedBackend.cc:1075") {
+#          issue_time = gettimeofday_ns()
+#          printf("== issue_time: %d %s -> %4d tid: %d\n", issue_time, ppfunc(), pid(), $tid)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("do_repop_reply@ReplicatedBackend.cc:649") {
+#          reply_time = gettimeofday_ns()
+#          printf("== reply_time: %d %s -> %4d rep_tid: %d\n", reply_time, ppfunc(), pid(), $ip_op->tid)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("op_commit@ReplicatedBackend.cc:620") {
+#          primary_end_time = gettimeofday_ns()
+#          printf("== primary_end_time: %d %s -> %4d rep_tid: %d\n", primary_end_time, ppfunc(), pid(), $op->tid)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_txc_state_proc@BlueStore.cc:8136") {
+#          prepare_time = gettimeofday_ns()
+#          printf("== prepare_time: %d %s -> %4d %s\n", prepare_time, ppfunc(), pid(), $txc->osr$)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_txc_state_proc@BlueStore.cc:8146") {
+#          aio_wait_time = gettimeofday_ns()
+#          printf("== aio_wait_time: %d %s -> %4d %d\n", aio_wait_time, ppfunc(), pid(), $txc)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_txc_state_proc@BlueStore.cc:8152") {
+#          io_done_time = gettimeofday_ns()
+#          printf("== io_done_time: %d %s -> %4d %d\n", io_done_time, ppfunc(), pid(), $txc)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_txc_state_proc@BlueStore.cc:8199") {
+#          kv_submitted_time = gettimeofday_ns()
+#          printf("== kv_submitted_time: %d %s -> %4d %d\n", kv_submitted_time, ppfunc(), pid(), $txc)
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_txc_state_proc@BlueStore.cc:8203") {
+#          kv_done_time = gettimeofday_ns()
+#          printf("== kv_done_time: %d %s -> %4d %d\n", kv_done_time, ppfunc(), pid(), $txc)
+#}
+
+probe process("/usr/bin/ceph-osd").statement("flush@KernelDevice.cc:307") {
+          printf("== flush_time: %d %s \n", $dur->tv->tv_nsec, ppfunc())
+}
+
+global before_submit_transaction_sync
+
+probe process("/usr/bin/ceph-osd").statement("_kv_sync_thread@BlueStore.cc:8859") {
+          before_submit_transaction_sync = gettimeofday_ns()
+          printf("== before_submit_transaction_sync: %d %s -> %4d %d\n", before_submit_transaction_sync, ppfunc(), pid(), $synct->_M_ptr)
+}
+
+probe process("/usr/bin/ceph-osd").statement("_kv_sync_thread@BlueStore.cc:8881") {
+          after_submit_transaction_sync = gettimeofday_ns()
+          printf("== after_submit_transaction_sync: %d sync_time: %d %s -> %4d %d\n", after_submit_transaction_sync, after_submit_transaction_sync - before_submit_transaction_sync, ppfunc(), pid(), $synct->_M_ptr)
+}
+
+probe process("/usr/bin/ceph-osd").function("*@BlueRocksEnv.cc").call {
+          func_time = gettimeofday_ns()
+          printf("== @BlueRocksEnv.cc %d %s -> %4d \n", func_time, ppfunc(), pid())
+}
+probe process("/usr/bin/ceph-osd").function("*@BlueRocksEnv.cc").return {
+          func_return_time = gettimeofday_ns()
+          printf("== @BlueRocksEnv.cc %d %s.return -> %4d \n", func_return_time, ppfunc(), pid())
+}
+
+#probe process("/usr/bin/ceph-osd").function("Append@BlueRocksEnv.cc").call {
+#          printf("=============append backtrace==========\n")
+#          print_ubacktrace()
+#          printf("=============end append backtrace==========\n")
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("WriteBuffered@file_reader_writer.cc").call {
+#          printf("=============WriteBuffered backtrace==========\n")
+#          print_ubacktrace()
+#          printf("=============end WriteBuffered backtrace==========\n")
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("Append@file_reader_writer.cc").call {
+#          printf("=============Append@file_reader_writer backtrace==========\n")
+#          print_ubacktrace()
+#          printf("=============end Append@file_reader_writer backtrace==========\n")
+#}
+
+probe process("/usr/bin/ceph-osd").function("*@KernelDevice.cc").call {
+          kdev_func_time = gettimeofday_ns()
+          printf("== KernelDevice.cc %d %s -> %4d \n", kdev_func_time, ppfunc(), pid())
+}
+probe process("/usr/bin/ceph-osd").function("*@KernelDevice.cc").return {
+          kdev_func_return_time = gettimeofday_ns()
+          printf("== KernelDevice.cc %d %s.return -> %4d \n", kdev_func_return_time, ppfunc(), pid())
+}
+
+probe process("/usr/bin/ceph-osd").function("aio_submit@KernelDevice.cc").call {
+          printf("=====================aio_submit stack===============\n")
+          print_ubacktrace()
+          printf("=====================end aio_submit stack===========\n")
+}
+
+probe process("/usr/bin/ceph-osd").function("aio_write@KernelDevice.cc").call {
+          printf("=====================aio_write stack===============\n")
+          print_ubacktrace()
+          printf("=====================end aio_write stack===========\n")
+}
+
+
+#probe process("/usr/bin/ceph-osd").function("*@file_reader_writer.cc").call {
+#          printf("file_reader_writer %s.call -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@file_reader_writer.cc").return {
+#          printf("file_reader_writer %s.return -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@db_impl_write.cc").call {
+#          printf("db_impl_write.cc %s.call -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@db_impl_write.cc").return {
+#          printf("db_impl_write.cc %s.return -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@rate_limiter.cc").call {
+#          printf("rate_limiter.cc %s.call -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@rate_limiter.cc").return {
+#          printf("rate_limiter.cc %s.return -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("RequestToken@file_reader_writer.cc:325") {
+#          printf("RequestToken: bytes: %d %s-> %4d \n", $bytes, ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@db_impl_compaction_flush.cc").call {
+#          printf("db_impl_compaction_flush.cc %s.call -> %4d \n", ppfunc(), pid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").function("*@db_impl_compaction_flush.cc").return {
+#          printf("db_impl_compaction_flush.cc %s.return -> %4d \n", ppfunc(), pid())
+#}

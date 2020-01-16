@@ -1,0 +1,76 @@
+#probe process("/usr/bin/ceph-osd").statement("flush@KernelDevice.cc:307") {
+#          printf("== flush_time: %d %s \n", $dur->tv->tv_nsec, ppfunc())
+#}
+#
+global before_submit_transaction_sync
+#
+#probe process("/usr/bin/ceph-osd").statement("_kv_sync_thread@BlueStore.cc:8859") {
+#          before_submit_transaction_sync = gettimeofday_ns()
+#          printf("== before_submit_transaction_sync: %d %s -> %4d %d %d\n", before_submit_transaction_sync, ppfunc(), pid(), $synct->_M_ptr, tid())
+#}
+#
+#probe process("/usr/bin/ceph-osd").statement("_kv_sync_thread@BlueStore.cc:8881") {
+#          after_submit_transaction_sync = gettimeofday_ns()
+#          printf("== after_submit_transaction_sync: %d sync_time: %d %s -> %4d %d %d\n", after_submit_transaction_sync, after_submit_transaction_sync - before_submit_transaction_sync, ppfunc(), pid(), $synct->_M_ptr, tid())
+#}
+
+probe process("/usr/bin/ceph-osd").function("*@BlueRocksEnv.cc").call {
+          func_time = gettimeofday_ns()
+          printf("== @BlueRocksEnv.cc %d %s -> %4d \n", func_time, ppfunc(), pid())
+}
+
+#probe process("/usr/bin/ceph-osd").function("Append@BlueRocksEnv.cc").call {
+#          printf("=====================append stack===============\n")
+#          print_ubacktrace()
+#          printf("=====================end append stack===========\n")
+#}
+
+probe process("/usr/bin/ceph-osd").function("*@BlueRocksEnv.cc").return {
+          func_return_time = gettimeofday_ns()
+          printf("== @BlueRocksEnv.cc %d %s.return -> %4d \n", func_return_time, ppfunc(), pid())
+}
+
+probe process("/usr/bin/ceph-osd").function("*@KernelDevice.cc").call {
+          kdev_func_time = gettimeofday_ns()
+          printf("== KernelDevice.cc %d %s -> %4d \n", kdev_func_time, ppfunc(), pid())
+}
+probe process("/usr/bin/ceph-osd").function("*@KernelDevice.cc").return {
+          kdev_func_return_time = gettimeofday_ns()
+          printf("== KernelDevice.cc %d %s.return -> %4d \n", kdev_func_return_time, ppfunc(), pid())
+}
+
+#probe process("/usr/bin/ceph-osd").function("aio_submit@KernelDevice.cc").call {
+#          printf("=====================aio_submit stack===============\n")
+#          print_ubacktrace()
+#          printf("=====================end aio_submit stack===========\n")
+#}
+#
+probe process("/usr/bin/ceph-osd").function("aio_write@KernelDevice.cc").call {
+          printf("=====================aio_write stack===============\n")
+          print_ubacktrace()
+          printf("=====================end aio_write stack===========\n")
+}
+probe process("/usr/bin/ceph-osd").statement("aio_write@KernelDevice.cc:643") {
+          printf("== aio_write:off: %d, len: %d %s -> %d %d\n", $off, $len, ppfunc(), pid(), tid())
+}
+
+probe process("/usr/bin/ceph-osd").function("_aio_log_finish@KernelDevice.cc") {
+          printf("== finishIOoff: %d, len: %d %s -> %d %d\n", $offset, $length, ppfunc(), pid(), tid())
+}
+
+probe process("/usr/bin/ceph-osd").function("Sync@BlueRocksEnv.cc").call {
+          printf("=====================Sync stack===============\n")
+          print_ubacktrace()
+          printf("=====================end Sync stack===========\n")
+}
+
+global enter_submit
+probe process("/usr/bin/ceph-osd").function("submit_transaction_sync@RocksDBStore.cc").call {
+          submit_func_time = gettimeofday_ns()
+          enter_submit = submit_func_time
+          printf("== submit_transaction_sync@RocksDBStore.cc %d %s -> %4d \n", submit_func_time, ppfunc(), pid())
+}
+probe process("/usr/bin/ceph-osd").function("submit_transaction_sync@RocksDBStore.cc").return {
+          submit_end_func_time = gettimeofday_ns()
+          printf("== submit_transaction_sync@RocksDBStore.cc %d sync_time %d %s -> %4d \n", submit_end_func_time,  submit_end_func_time - enter_submit, ppfunc(), pid())
+}
